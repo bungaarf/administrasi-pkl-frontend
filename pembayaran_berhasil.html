@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slip Pembayaran Berhasil</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        background-color: #eaf1fb;
+        padding: 40px;
+        color: #000;
+      }
+
+      .container {
+        max-width: 700px;
+        margin: auto;
+        background: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      }
+
+      h2 {
+        text-align: center;
+        color: #111827;
+      }
+
+      .bank-info {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .bank-info h3 {
+        margin: 5px 0;
+      }
+
+      .bank-info p {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      hr {
+        margin: 20px 0;
+      }
+
+      .detail p {
+        margin: 6px 0;
+        font-size: 16px;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      .table th,
+      .table td {
+        border: 1px solid #999;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .table th {
+        background-color: #f1f5f9;
+      }
+
+      .btn-cetak {
+        margin-top: 30px;
+        display: block;
+        width: 100%;
+        background-color: #2563eb;
+        color: white;
+        padding: 12px;
+        font-size: 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container" id="slip">
+      <h2 class="hidden-print">Slip Pembayaran Berhasil</h2>
+      <div class="bank-info">
+        <h3>BANK MINI<br />SMK INFOKOM BOGOR</h3>
+        <p>Jl. Letjen Ibrahim Adjie No.178, Sindang Barang Loji, Bogor</p>
+      </div>
+      <hr />
+      <div class="detail" id="detailSlip">
+        <p><strong>Virtual Account:</strong> -</p>
+        <p><strong>Nama Siswa:</strong> -</p>
+        <p><strong>Tingkat:</strong> -</p>
+        <p><strong>Jurusan / Kelas:</strong> -</p>
+        <p><strong>Catatan:</strong> -</p>
+        <p><strong>Tanggal Setor:</strong> -</p>
+      </div>
+      <hr />
+      <table class="table">
+        <thead>
+          <tr>
+            <th>SETORAN</th>
+            <th>Rp.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Jumlah Setoran</td>
+            <td id="jumlahSetor">-</td>
+          </tr>
+          <tr>
+            <td>Biaya Administrasi</td>
+            <td>2.500</td>
+          </tr>
+          <tr>
+            <th>TOTAL SETOR</th>
+            <th id="totalSetor">-</th>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn-cetak hidden-print" onclick="downloadPDF()">
+        Download PDF
+      </button>
+    </div>
+
+    <script>
+      const data = JSON.parse(localStorage.getItem("pembayaranData"));
+      if (data) {
+        document.getElementById("detailSlip").innerHTML = `
+        <p><strong>Virtual Account:</strong> ${data.va_number}</p>
+        <p><strong>Nama Siswa:</strong> ${data.nama}</p>
+        <p><strong>Tingkat:</strong> ${data.kelas.split(" ")[0]}</p>
+        <p><strong>Jurusan / Kelas:</strong> ${data.jurusan} / ${
+          data.kelas.split(" ")[1] || data.kelas
+        }</p>
+        <p><strong>Catatan:</strong> ${data.note || "-"}</p>
+        <p><strong>Tanggal Setor:</strong> ${data.tanggal_setor}</p>
+      `;
+        const jumlah = Number(data.amount);
+        const total = jumlah + 2500;
+        document.getElementById("jumlahSetor").textContent =
+          jumlah.toLocaleString("id-ID");
+        document.getElementById("totalSetor").textContent =
+          total.toLocaleString("id-ID");
+      }
+
+      async function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const slip = document.getElementById("slip");
+
+        // SEMBUNYIKAN elemen dengan class "hidden-print"
+        const toHide = document.querySelectorAll(".hidden-print");
+        toHide.forEach((el) => (el.style.display = "none"));
+
+        await html2canvas(slip, { scale: 2 }).then((canvas) => {
+          const imgData = canvas.toDataURL("image/png");
+          const pdf = new jsPDF("p", "mm", "a4");
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          pdf.save("slip_pembayaran.pdf");
+        });
+
+        // TAMPILKAN kembali elemen yang disembunyikan
+        toHide.forEach((el) => (el.style.display = ""));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rincian Tagihan Siswa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background-color: #f0f8ff;
+        font-family: "Poppins", sans-serif;
+        padding: 2rem;
+      }
+
+      .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        max-width: 900px;
+        margin: auto;
+      }
+
+      h2 {
+        text-align: center;
+        color: #3dbff0;
+        margin-bottom: 1rem;
+      }
+
+      .info {
+        margin-bottom: 1rem;
+      }
+
+      .info strong {
+        display: inline-block;
+        width: 55px;
+        font-weight: 600;
+      }
+
+      .table th {
+        background-color: #3dbff0;
+        color: white;
+      }
+
+      .btn-back {
+        margin-top: 1rem;
+      }
+
+      .btn-custom {
+        margin-top: 1rem;
+      }
+
+      .filter-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        align-items: center;
+      }
+
+      .filter-container select {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Rincian Tagihan</h2>
+
+      <div class="info">
+        <strong>Nama:</strong> <span id="nama">Memuat...</span>
+      </div>
+      <div class="info"><strong>Kelas:</strong> <span id="kelas">-</span></div>
+
+      <div class="filter-container">
+        <label for="periode">Periode Bulan:</label>
+        <select id="periode">
+          <option value="">Semua</option>
+        </select>
+
+        <label for="tahun">Tahun:</label>
+        <select id="tahun">
+          <option value="">Semua</option>
+        </select>
+      </div>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Pilih</th>
+            <th>Nama Tagihan</th>
+            <th>Nominal</th>
+            <th>Bulan</th>
+            <th>Tahun</th>
+          </tr>
+        </thead>
+        <tbody id="tagihanList">
+          <tr>
+            <td colspan="5" class="text-center">Memuat data...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button class="btn btn-success btn-custom" id="btnBayar">
+        Bayar Sekarang
+      </button>
+      <div id="hasilBayar" class="mt-3"></div>
+      <button class="btn btn-secondary btn-back" onclick="history.back()">
+        Kembali
+      </button>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const nis = urlParams.get("nis");
+      const kelas = urlParams.get("kelas");
+
+      if (!nis || !kelas) {
+        alert("Data siswa tidak lengkap.");
+        window.location.href = "/login.html";
+      }
+
+      document.getElementById("kelas").textContent = `Kelas ${kelas}`;
+      let allTagihan = [];
+      let filteredTagihan = [];
+
+      const periodeList = [
+        { label: "Januari–Februari", range: [1, 2] },
+        { label: "Maret–April", range: [3, 4] },
+        { label: "Mei–Juni", range: [5, 6] },
+        { label: "Juli–Agustus", range: [7, 8] },
+        { label: "September–Oktober", range: [9, 10] },
+        { label: "November–Desember", range: [11, 12] },
+      ];
+
+      const periodeSelect = document.getElementById("periode");
+      const tahunSelect = document.getElementById("tahun");
+
+      periodeList.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.range.join("-");
+        opt.textContent = p.label;
+        periodeSelect.appendChild(opt);
+      });
+
+      const currentYear = new Date().getFullYear();
+      for (let y = 2023; y <= currentYear; y++) {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        tahunSelect.appendChild(opt);
+      }
+
+      // Ambil data siswa
+      fetch(`http://127.0.0.1:8000/api/siswa-nis/${nis}`)
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById("nama").textContent =
+            data.nama || "(Tanpa Nama)";
+        });
+
+      // Ambil data tagihan
+      fetch(
+        `http://127.0.0.1:8000/api/tagihan-siswa-nis?nis=${encodeURIComponent(
+          nis
+        )}&kelas=${encodeURIComponent(kelas)}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          // Filter hanya tagihan yang belum lunas
+          const belumLunas = data.filter(
+            (item) => item.status === "belum lunas"
+          );
+
+          allTagihan = belumLunas.map((item) => {
+            const tanggal = new Date(item.tanggal_tagihan);
+            return {
+              id: item.id,
+              nama_tagihan: item.jenis_tagihan?.nama_tagihan || "-",
+              nominal: item.jenis_tagihan?.nominal || 0,
+              bulan: tanggal.getMonth() + 1,
+              tahun: tanggal.getFullYear(),
+            };
+          });
+          filterData(); // render table awal
+        });
+
+      function renderTable(data) {
+        filteredTagihan = data;
+        const tbody = document.getElementById("tagihanList");
+        tbody.innerHTML = "";
+
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center">Tidak ada tagihan untuk filter ini.</td></tr>`;
+          document.getElementById("btnBayar").disabled = true;
+          document.getElementById("hasilBayar").innerHTML = "";
+          return;
+        }
+
+        const namaBulan = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "Mei",
+          "Jun",
+          "Jul",
+          "Agu",
+          "Sep",
+          "Okt",
+          "Nov",
+          "Des",
+        ];
+
+        data.forEach((tagihan) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="checkbox" class="tagihan-checkbox" data-id="${
+              tagihan.id
+            }" data-nominal="${tagihan.nominal}" /></td>
+            <td>${tagihan.nama_tagihan}</td>
+            <td>Rp ${parseInt(tagihan.nominal).toLocaleString("id-ID")}</td>
+            <td>${namaBulan[(tagihan.bulan || 1) - 1]}</td>
+            <td>${tagihan.tahun}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.querySelectorAll(".tagihan-checkbox").forEach((cb) => {
+          cb.addEventListener("change", updateBayarButton);
+        });
+
+        updateBayarButton();
+      }
+
+      function updateBayarButton() {
+        const checkboxes = document.querySelectorAll(".tagihan-checkbox");
+        const adaYangDipilih = [...checkboxes].some((c) => c.checked);
+        const btnBayar = document.getElementById("btnBayar");
+        btnBayar.disabled = !adaYangDipilih;
+
+        const hasilBayar = document.getElementById("hasilBayar");
+        if (adaYangDipilih) {
+          const selected = [...checkboxes].filter((c) => c.checked);
+          const totalBayar = selected.reduce(
+            (sum, c) => sum + parseInt(c.dataset.nominal),
+            0
+          );
+          hasilBayar.innerHTML = `
+            <div class="alert alert-info">
+              <strong>${selected.length}</strong> tagihan dipilih.<br>
+              Total yang harus dibayar: <strong>Rp ${totalBayar.toLocaleString(
+                "id-ID"
+              )}</strong>
+            </div>
+          `;
+        } else {
+          hasilBayar.innerHTML = "";
+        }
+      }
+
+      function filterData() {
+        let periodeValue = periodeSelect.value;
+        let tahunValue = tahunSelect.value;
+
+        let filtered = [...allTagihan];
+
+        if (periodeValue) {
+          const [bulanAwal, bulanAkhir] = periodeValue.split("-").map(Number);
+          filtered = filtered.filter(
+            (t) => t.bulan >= bulanAwal && t.bulan <= bulanAkhir
+          );
+        }
+        if (tahunValue) {
+          filtered = filtered.filter((t) => t.tahun == tahunValue);
+        }
+
+        renderTable(filtered);
+      }
+
+      periodeSelect.addEventListener("change", filterData);
+      tahunSelect.addEventListener("change", filterData);
+
+      // Tombol bayar
+      document.getElementById("btnBayar").addEventListener("click", () => {
+        const selectedCheckboxes = document.querySelectorAll(
+          ".tagihan-checkbox:checked"
+        );
+
+        if (selectedCheckboxes.length === 0) {
+          alert("Pilih minimal satu tagihan untuk dibayar.");
+          return;
+        }
+
+        const idsTagihan = Array.from(selectedCheckboxes).map(
+          (c) => c.dataset.id
+        );
+        const nominalTotal = Array.from(selectedCheckboxes).reduce(
+          (sum, c) => sum + parseInt(c.dataset.nominal),
+          0
+        );
+
+        // Simpan data tagihan yang dipilih ke localStorage
+        localStorage.setItem(
+          "tagihanDipilih",
+          JSON.stringify({
+            ids: idsTagihan,
+            nominal: nominalTotal,
+          })
+        );
+
+        const url = `http://127.0.0.1:5500/form_pembayaran.html?ids=${idsTagihan.join(
+          ","
+        )}&nis=${encodeURIComponent(nis)}&kelas=${encodeURIComponent(kelas)}`;
+        window.location.href = url;
+      });
+    </script>
+  </body>
+</html>

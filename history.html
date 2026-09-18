@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riwayat Pembayaran</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <style>
+    /* Sama seperti sebelumnya */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: #f0f6ff;
+      padding: 30px;
+      color: #1e3a8a;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    .filter-container {
+      margin-bottom: 20px;
+    }
+
+    .filter-container select {
+      padding: 8px 12px;
+      margin-right: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e0e0e0;
+      text-align: left;
+    }
+
+    th {
+      background-color: #1e3a8a;
+      color: white;
+    }
+
+    .loading {
+      text-align: center;
+      color: #555;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: capitalize;
+    }
+
+    .badge.success {
+      background-color: green;
+    }
+
+    .badge.pending {
+      background-color: orange;
+    }
+
+    .badge.failed {
+      background-color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Riwayat Pembayaran</h2>
+
+    <div class="filter-container">
+      <label for="periode">Periode Bulan:</label>
+      <select id="periode">
+        <option value="">Semua</option>
+      </select>
+
+      <label for="tahun">Tahun:</label>
+      <select id="tahun">
+        <option value="">Semua</option>
+      </select>
+    </div>
+
+    <div id="status" class="loading">Memuat data...</div>
+
+    <table id="riwayatTable" style="display: none;">
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Jenis Pembayaran</th>
+          <th>Jumlah</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="riwayatBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const nis = user?.nis;
+
+      if (!nis) {
+        document.getElementById("status").innerText = "NIS tidak ditemukan. Silakan login ulang.";
+        return;
+      }
+
+      const periodeSelect = document.getElementById("periode");
+      const tahunSelect = document.getElementById("tahun");
+      const tbody = document.getElementById("riwayatBody");
+      const table = document.getElementById("riwayatTable");
+      const statusDiv = document.getElementById("status");
+
+      let allData = [];
+
+      const periodeList = [
+        { label: "Januari–Februari", range: [1, 2] },
+        { label: "Maret–April", range: [3, 4] },
+        { label: "Mei–Juni", range: [5, 6] },
+        { label: "Juli–Agustus", range: [7, 8] },
+        { label: "September–Oktober", range: [9, 10] },
+        { label: "November–Desember", range: [11, 12] }
+      ];
+
+      // Isi dropdown periode
+      periodeList.forEach((periode, index) => {
+        const option = document.createElement("option");
+        option.value = periode.range.join("-");
+        option.textContent = periode.label;
+        periodeSelect.appendChild(option);
+      });
+
+      // Isi dropdown tahun dari 2023 sampai tahun sekarang
+      const currentYear = new Date().getFullYear();
+      for (let year = 2023; year <= currentYear; year++) {
+        const option = document.createElement("option");
+        option.value = year;
+        option.textContent = year;
+        tahunSelect.appendChild(option);
+      }
+
+      fetch(`http://127.0.0.1:8000/api/riwayat-pembayaran/${nis}`)
+        .then(response => {
+          if (!response.ok) throw new Error("Gagal mengambil data dari server");
+          return response.json();
+        })
+        .then(data => {
+          if (data.length === 0) {
+            statusDiv.innerText = "Tidak ada riwayat pembayaran.";
+            return;
+          }
+
+          allData = data;
+          renderTable(data);
+          statusDiv.style.display = "none";
+          table.style.display = "table";
+        })
+        .catch(error => {
+          statusDiv.innerText = "Terjadi kesalahan: " + error.message;
+        });
+
+      function renderTable(data) {
+        tbody.innerHTML = "";
+        data.forEach(item => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${new Date(item.tanggal_setor).toLocaleDateString('id-ID')}</td>
+            <td>${item.note || '-'}</td>
+            <td>Rp${parseInt(item.amount).toLocaleString('id-ID')}</td>
+            <td><span class="badge ${item.status}">${item.status}</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      function filterData() {
+        const periodeValue = periodeSelect.value;
+        const tahunValue = parseInt(tahunSelect.value);
+
+        let startBulan = 0;
+        let endBulan = 12;
+
+        if (periodeValue) {
+          const [start, end] = periodeValue.split("-").map(Number);
+          startBulan = start;
+          endBulan = end;
+        }
+
+        const filtered = allData.filter(item => {
+          const tanggal = new Date(item.tanggal_setor);
+          const bulan = tanggal.getMonth() + 1;
+          const tahun = tanggal.getFullYear();
+
+          const matchBulan = !periodeValue || (bulan >= startBulan && bulan <= endBulan);
+          const matchTahun = !tahunValue || tahun === tahunValue;
+
+          return matchBulan && matchTahun;
+        });
+
+        renderTable(filtered);
+      }
+
+      periodeSelect.addEventListener("change", filterData);
+      tahunSelect.addEventListener("change", filterData);
+    });
+  </script>
+</body>
+</html>

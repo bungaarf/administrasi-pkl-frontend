@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tambah Tagihan Siswa</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css" />
+  <link rel="stylesheet" href="./src/css/add_student.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+<div class="app-container">
+  <div class="sidebar">
+    <!-- Sidebar jika ada -->
+  </div>
+
+  <div class="app-content">
+    <div class="app-content-header">
+      <h1 class="app-content-headerText">Tambah Tagihan Siswa</h1>
+      <button class="mode-switch" title="Switch Theme">
+        <svg class="moon" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="24" height="24" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+        </svg>
+      </button>
+      <button class="app-content-headerButton" onclick="window.location.href='billing.html'">Back</button>
+    </div>
+
+    <div class="student-form-container">
+      <form id="billingForm" class="student-form">
+        <div class="form-section">
+          <h2 class="form-section-title">Informasi Tagihan Siswa</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="siswa_id" class="form-label">ID Siswa</label>
+              <input type="number" id="siswa_id" name="siswa_id" class="form-input" required placeholder="Contoh: 1" />
+            </div>
+
+            <div class="form-group">
+              <label for="jenis_tagihan_id" class="form-label">ID Jenis Tagihan</label>
+              <input type="number" id="jenis_tagihan_id" name="jenis_tagihan_id" class="form-input" required placeholder="Contoh: 2" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tanggal_tagihan" class="form-label">Tanggal Tagihan</label>
+              <input type="date" id="tanggal_tagihan" name="tanggal_tagihan" class="form-input" required />
+            </div>
+
+            <div class="form-group">
+              <label for="status" class="form-label">Status</label>
+              <select id="status" name="status" class="form-select" required>
+                <option value="" disabled selected>Pilih Status</option>
+                <option value="belum lunas">Belum Lunas</option>
+                <option value="lunas">Lunas</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="form-button cancel" onclick="window.location.href='billing.html'">Cancel</button>
+          <button type="submit" class="form-button submit">Tambah Tagihan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="./src/js/add_billing.js"></script>
+</body>
+</html>

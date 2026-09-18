@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tagihan Kelas 12 - SMK Infokom Kota Bogor</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background-color: #e3f4fd;
+        font-family: "Poppins", sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+
+      .main-container {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .content-wrapper {
+        max-width: 900px;
+        width: 100%;
+      }
+
+      .header {
+        margin-bottom: 2rem;
+      }
+
+      .header h1 {
+        color: #3dbff0;
+        font-weight: 600;
+      }
+
+      .tagihan-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+
+      .tagihan-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .tagihan-card h3 {
+        color: #3dbff0;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+      }
+
+      .tagihan-card p {
+        color: #555;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .tagihan-card a {
+        background-color: #3dbff0;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background-color 0.3s;
+      }
+
+      .tagihan-card a:hover {
+        background-color: #1aaee4;
+      }
+
+      footer {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #777;
+        margin-top: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="content-wrapper">
+        <div class="header">
+          <h1>Tagihan Kelas 12</h1>
+          <p>
+            Berikut adalah daftar tagihan untuk kelas 12. Silakan pilih tagihan
+            untuk melanjutkan pembayaran.
+          </p>
+        </div>
+
+        <div class="tagihan-list" id="tagihan-list">
+          <!-- Tagihan akan ditambahkan di sini menggunakan JavaScript -->
+        </div>
+
+        <footer>
+          &copy; 2025 SMK Infokom Kota Bogor. All rights reserved.
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      // Ambil data user dari localStorage
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      if (user) {
+        // Jika data user ada, ambil nis dari user yang sudah login
+        const nis = user.nis;
+
+        // Mengambil tagihan siswa berdasarkan nis user yang login
+        fetch(`http://127.0.0.1:8000/api/tagihan-siswa-nis?nis=${nis}`)
+          .then((response) => response.json())
+          .then((data) => {
+            const tagihanList = document.getElementById("tagihan-list");
+            tagihanList.innerHTML = ""; // Clear existing tagihan
+
+            // Ambil tagihan siswa dengan jenis tagihan kelas 12
+            const tagihanKelas10 = data.filter((tagihanSiswa) => {
+              // Ambil jenis tagihan berdasarkan jenis_tagihan_id
+              return (
+                tagihanSiswa.jenis_tagihan_id &&
+                tagihanSiswa.jenis_tagihan &&
+                tagihanSiswa.jenis_tagihan.kelas === 12
+              );
+            });
+
+            // Cek jika ada tagihan kelas 12
+            if (tagihanKelas10.length > 0) {
+              // Loop untuk menampilkan setiap tagihan
+              tagihanKelas10.forEach((tagihanSiswa) => {
+                const tagihanCard = document.createElement("div");
+                tagihanCard.classList.add("tagihan-card");
+
+                // Judul tagihan
+                const tagihanTitle = document.createElement("h3");
+                tagihanTitle.textContent = `Tagihan: ${tagihanSiswa.jenis_tagihan.nama_tagihan}`;
+                tagihanCard.appendChild(tagihanTitle);
+
+                // Status
+                const statusTagihan = document.createElement("p");
+                statusTagihan.textContent = `Status: ${tagihanSiswa.status}`;
+                tagihanCard.appendChild(statusTagihan);
+
+                // Nominal
+                const nominal = document.createElement("p");
+                const nominalFormatted = Number(
+                  tagihanSiswa.jenis_tagihan.nominal
+                ).toLocaleString("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                });
+                nominal.textContent = `Nominal: ${nominalFormatted}`;
+                tagihanCard.appendChild(nominal);
+
+                // Tombol bayar
+                const bayarButton = document.createElement("a");
+                bayarButton.href = `form_pembayaran.html?tagihan_id=${tagihanSiswa.id}`;
+                bayarButton.addEventListener("click", () => {
+                  localStorage.setItem(
+                    "tagihanDipilih",
+                    JSON.stringify({
+                      id: tagihanSiswa.id,
+                      nama_tagihan: tagihanSiswa.jenis_tagihan.nama_tagihan,
+                      nominal: tagihanSiswa.jenis_tagihan.nominal,
+                      status: tagihanSiswa.status,
+                    })
+                  );
+                });
+                bayarButton.textContent = "Bayar Sekarang";
+                tagihanCard.appendChild(bayarButton);
+
+                tagihanList.appendChild(tagihanCard);
+              });
+            } else {
+              tagihanList.innerHTML =
+                "<p>Tidak ada tagihan untuk kelas 10.</p>";
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      } else {
+        // Jika data user tidak ditemukan di localStorage
+        console.log("User tidak ditemukan");
+      }
+    </script>
+  </body>
+</html>

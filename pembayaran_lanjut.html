@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detail Pembayaran</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- SweetAlert2 -->
+  <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="SB-Mid-client-7EFOtkWbw9fDLeMA"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f0f6ff;
+      padding: 30px;
+      color: #1e3a8a;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .info {
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    .btn-bayar {
+      display: block;
+      width: 100%;
+      margin-top: 30px;
+      padding: 12px;
+      background-color: #2563eb;
+      color: white;
+      text-align: center;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 20px;
+    }
+    .btn-bayar:disabled {
+      background-color: #a5b4fc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Detail Pembayaran</h2>
+    <div id="dataPembayaran">
+      <p class="info">Memuat data...</p>
+    </div>
+
+    <!-- Menambahkan elemen untuk menampilkan payment_id -->
+    <p class="info"><strong>Payment ID:</strong> <span id="paymentId">Memuat...</span></p>
+
+    <button id="btnBayar" class="btn-bayar">Lanjutkan ke Pembayaran</button>
+  </div>
+
+  <script>
+    const data = JSON.parse(localStorage.getItem("pembayaranData"));
+    const container = document.getElementById("dataPembayaran");
+    const btnBayar = document.getElementById("btnBayar");
+    const paymentIdElement = document.getElementById("paymentId");
+  
+    if (data) {
+      container.innerHTML = `        
+        <p class="info"><strong>NIS:</strong> ${data.nis}</p>
+        <p class="info"><strong>Nama:</strong> ${data.nama}</p>
+        <p class="info"><strong>Kelas:</strong> ${data.kelas}</p>
+        <p class="info"><strong>Jurusan:</strong> ${data.jurusan}</p>
+        <p class="info"><strong>VA Number:</strong> ${data.va_number}</p>
+        <p class="info"><strong>Jumlah:</strong> Rp ${Number(data.amount).toLocaleString()}</p>
+        <p class="info"><strong>Tanggal Setor:</strong> ${data.tanggal_setor}</p>
+        <p class="info"><strong>Catatan:</strong> ${data.note || '-'}</p>
+      `;
+
+      // Menampilkan payment_id dari localStorage
+      paymentIdElement.textContent = data.id || 'Tidak tersedia'; // Menampilkan payment_id jika ada
+    } else {
+      container.innerHTML = `<p class="info">Data pembayaran tidak ditemukan.</p>`;
+      btnBayar.disabled = true;
+    }
+  
+    btnBayar.addEventListener("click", function () {
+      if (!data) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Data Tidak Ditemukan',
+          text: 'Tidak dapat melanjutkan pembayaran karena data kosong.'
+        });
+        return;
+      }
+
+      // Mengambil payment_id dari localStorage
+      const paymentId = data.id;  // Pastikan di localStorage sudah ada 'id' (payment_id)
+
+      // Konfirmasi sebelum lanjut
+      Swal.fire({
+        title: 'Konfirmasi Pembayaran',
+        text: "Apakah Anda yakin ingin melanjutkan ke pembayaran?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Lanjutkan',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Proses lanjut pembayaran
+          Swal.fire({
+            title: 'Memproses...',
+            text: 'Mohon tunggu sebentar.',
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          });
+
+          // Menambahkan payment_id ke body request
+          const requestData = {
+            ...data,
+            payment_id: paymentId, // Menambahkan payment_id dari localStorage
+          };
+
+          fetch("https://fb31-182-253-124-152.ngrok-free.app/api/transaksi", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: JSON.stringify(requestData), // Mengirimkan payment_id
+          })
+          .then(res => res.json())
+          .then(res => {
+            Swal.close();
+            if (res.snap_token) {
+              localStorage.setItem("snap_token", res.snap_token);
+              snap.pay(res.snap_token, {
+                onSuccess: function(result) {
+                  console.log("Transaksi berhasil:", result);
+                    localStorage.setItem("transaksiData", JSON.stringify(data)); // Simpan data
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Pembayaran Berhasil!',
+                    text: 'Terima kasih, pembayaran Anda sudah diproses.'
+                  }).then(() => {
+                    window.location.href = "pembayaran_berhasil.html"; // Redirect ke halaman sukses (optional)
+                  });
+                },
+                onPending: function(result) {
+                  console.log("Pembayaran tertunda:", result);
+                  Swal.fire({
+                    icon: 'info',
+                    title: 'Pembayaran Tertunda',
+                    text: 'Silakan selesaikan pembayaran Anda.'
+                  });
+                },
+                onError: function(result) {
+                  console.error("Error pembayaran:", result);
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Membayar',
+                    text: 'Terjadi kesalahan saat memproses pembayaran.'
+                  });
+                }
+              });
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mendapatkan Token',
+                text: res.message || 'Gagal membuat transaksi pembayaran.'
+              });
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            Swal.close();
+            Swal.fire({
+              icon: 'error',
+              title: 'Server Error',
+              text: 'Terjadi kesalahan saat menghubungi server.'
+            });
+          });
+        }
+      });
+    });
+  </script>
+  
+</body>
+</html>

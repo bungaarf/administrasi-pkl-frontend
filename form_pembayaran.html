@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Form Pembayaran Siswa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      /* CSS sama persis seperti sebelumnya */
+      body {
+        background-color: #f0f8ff;
+        font-family: "Poppins", sans-serif;
+        padding: 2rem;
+      }
+
+      .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        margin: auto;
+      }
+
+      h2 {
+        text-align: center;
+        color: #3dbff0;
+        margin-bottom: 1rem;
+      }
+
+      label {
+        font-weight: 600;
+      }
+
+      .form-control:focus {
+        box-shadow: none;
+        border-color: #3dbff0;
+      }
+
+      .btn-primary {
+        background-color: #3dbff0;
+        border: none;
+      }
+
+      .btn-primary:hover {
+        background-color: #2b8cd1;
+      }
+
+      .tagihan-summary {
+        margin-bottom: 1rem;
+        background-color: #e7f3fe;
+        padding: 10px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Form Pembayaran Tagihan</h2>
+
+      <div id="tagihanInfo" class="tagihan-summary">
+        Memuat informasi tagihan...
+      </div>
+
+      <form id="formPembayaran" autocomplete="off">
+        <input type="hidden" id="nis_hidden" name="nis" />
+        <input type="hidden" id="nama_hidden" name="nama" />
+        <input type="hidden" id="kelas_hidden" name="kelas" />
+        <input type="hidden" id="jurusan_hidden" name="jurusan" />
+        <input type="hidden" id="va_number_hidden" name="va_number" />
+        <input type="hidden" id="tagihan_siswa_ids" name="tagihan_siswa_ids" />
+
+        <div class="mb-3">
+          <label for="tagihan_terpilih" class="form-label">Tagihan Siswa Terpilih</label>
+          <textarea
+            id="tagihan_terpilih"
+            name="tagihan_terpilih"
+            class="form-control"
+            rows="3"
+            readonly
+            placeholder="Daftar tagihan siswa yang dipilih"
+          ></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="nama" class="form-label">Nama Siswa</label>
+          <input
+            type="text"
+            id="nama"
+            name="nama_display"
+            class="form-control"
+            placeholder="Nama lengkap"
+            readonly
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="nis" class="form-label">NIS</label>
+          <input
+            type="text"
+            id="nis"
+            name="nis_display"
+            class="form-control"
+            placeholder="Nomor Induk Siswa"
+            readonly
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="kelas" class="form-label">Kelas</label>
+          <input
+            type="text"
+            id="kelas"
+            name="kelas_display"
+            class="form-control"
+            readonly
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="jurusan" class="form-label">Jurusan</label>
+          <input
+            type="text"
+            id="jurusan"
+            name="jurusan_display"
+            class="form-control"
+            placeholder="Jurusan"
+            readonly
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="va_number" class="form-label">Nomor VA (Virtual Account)</label>
+          <input
+            type="text"
+            id="va_number"
+            name="va_number_display"
+            class="form-control"
+            placeholder="Nomor Virtual Account"
+            readonly
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="note" class="form-label">Catatan (Opsional)</label>
+          <textarea
+            id="note"
+            name="note"
+            class="form-control"
+            rows="2"
+            placeholder="Tambahkan catatan"
+          ></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="amount" class="form-label">Jumlah Bayar (Rp)</label>
+          <input
+            type="number"
+            id="amount"
+            name="amount"
+            class="form-control"
+            min="1"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="tanggal_setor" class="form-label">Tanggal Pembayaran</label>
+          <input
+            type="date"
+            id="tanggal_setor"
+            name="tanggal_setor"
+            class="form-control"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" id="btnTagihan">
+          Kirim Pembayaran
+        </button>
+      </form>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const tagihanIds = urlParams.get("ids") ? urlParams.get("ids").split(",") : [];
+      const nisUrl = urlParams.get("nis");
+      const kelasUrl = urlParams.get("kelas") || "";
+
+      if (!nisUrl || tagihanIds.length === 0) {
+        Swal.fire({
+          icon: "error",
+          title: "Data Tidak Lengkap",
+          text: "Harap pilih tagihan dan login terlebih dahulu.",
+        }).then(() => {
+          window.location.href = "rincian_tagihan.html";
+        });
+      }
+
+      const tagihanDipilih = JSON.parse(localStorage.getItem("tagihanDipilih")) || {
+        ids: [],
+        nominal: 0,
+      };
+
+      const tagihanInfo = document.getElementById("tagihanInfo");
+      tagihanInfo.innerHTML = `
+        <p>Tagihan dipilih: <strong>${tagihanDipilih.ids.length}</strong></p>
+        <p>Total nominal yang harus dibayar: <strong>Rp ${tagihanDipilih.nominal.toLocaleString("id-ID")}</strong></p>
+      `;
+
+      const tagihanTerpilihTextarea = document.getElementById("tagihan_terpilih");
+      tagihanTerpilihTextarea.value = tagihanDipilih.ids.length > 0 ? tagihanDipilih.ids.join(", ") : "Tidak ada tagihan yang dipilih.";
+
+      document.getElementById("nis_hidden").value = nisUrl || "";
+      document.getElementById("nis").value = nisUrl || "";
+      document.getElementById("tagihan_siswa_ids").value = JSON.stringify(tagihanDipilih.ids);
+      document.getElementById("kelas").value = kelasUrl;
+      document.getElementById("kelas_hidden").value = kelasUrl;
+
+      async function fetchSiswa(nis) {
+        try {
+          const res = await fetch(`http://127.0.0.1:8000/api/siswa-nis/${nis}`);
+          if (!res.ok) throw new Error("Gagal mengambil data siswa");
+          const data = await res.json();
+
+          document.getElementById("nama").value = data.nama || "";
+          document.getElementById("jurusan").value = data.jurusan || "";
+
+          document.getElementById("nama_hidden").value = data.nama || "";
+          document.getElementById("jurusan_hidden").value = data.jurusan || "";
+        } catch (error) {
+          Swal.fire("Error", error.message, "error");
+        }
+      }
+
+      fetchSiswa(nisUrl);
+
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      if (!user.nis || !user.va) {
+        Swal.fire({
+          icon: "warning",
+          title: "Belum Login",
+          text: "Siswa belum login. Silakan login ulang.",
+        }).then(() => {
+          window.location.href = "/login.html";
+        });
+      }
+      document.getElementById("va_number").value = user.va || "";
+      document.getElementById("va_number_hidden").value = user.va || "";
+
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("tanggal_setor").value = today;
+
+      document.getElementById("amount").value = tagihanDipilih.nominal;
+
+      document.getElementById("formPembayaran").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const nis = document.getElementById("nis_hidden").value;
+        const nama = document.getElementById("nama_hidden").value;
+        const kelas = document.getElementById("kelas_hidden").value;
+        const jurusan = document.getElementById("jurusan_hidden").value;
+        const va_number = document.getElementById("va_number_hidden").value;
+        const amount = parseInt(document.getElementById("amount").value);
+        const tanggal_setor = document.getElementById("tanggal_setor").value;
+        const note = document.getElementById("note").value;
+
+        const tagihanIds = tagihanDipilih.ids;
+        let details = [];
+        if (tagihanIds.length > 0) {
+          const perTagihan = amount / tagihanIds.length;
+          details = tagihanIds.map(id => ({
+            tagihan_siswa_id: id,
+            jumlah_bayar: perTagihan
+          }));
+        }
+
+        if (!nis || !nama || !kelas || !jurusan || !va_number || details.length === 0 || !amount || !tanggal_setor) {
+          Swal.fire("Error", "Form belum lengkap.", "error");
+          return;
+        }
+
+        try {
+          const res = await fetch("http://127.0.0.1:8000/api/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nis,
+              nama,
+              kelas,
+              jurusan,
+              va_number,
+              note,
+              tanggal_setor,
+              amount,
+              details,
+            }),
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            let errMsg = "Gagal melakukan pembayaran";
+            try {
+              const errJson = JSON.parse(text);
+              errMsg = errJson.message || errMsg;
+            } catch {}
+            throw new Error(errMsg);
+          }
+
+          const result = await res.json();
+
+          if (!result.id) {
+            throw new Error("Response tidak mengandung id pembayaran.");
+          }
+
+          // Simpan data payment ke localStorage
+          const paymentData = {
+            id: result.id,
+            nis,
+            nama,
+            kelas,
+            jurusan,
+            va_number,
+            note,
+            tanggal_setor,
+            amount,
+            details,
+            timestamp: new Date().toISOString(),
+          };
+          localStorage.setItem("pembayaranData", JSON.stringify(paymentData));
+
+          Swal.fire({
+            icon: "success",
+            title: "Berhasil",
+            text: "Pembayaran berhasil disimpan.",
+            confirmButtonText: "Lanjutkan",
+          }).then(() => {
+            localStorage.removeItem("tagihanDipilih");
+            window.location.href = "pembayaran_lanjut.html"; // Redirect ke halaman lain setelah pembayaran berhasil
+          });
+        } catch (error) {
+          Swal.fire("Error", error.message, "error");
+        }
+      });
+    </script>
+  </body>
+</html>
